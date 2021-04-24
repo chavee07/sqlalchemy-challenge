@@ -1,7 +1,39 @@
+# Import Dependencies
+#################################################
+import numpy as np
+
+import sqlalchemy
+from sqlalchemy.ext.automap import automap_base
+from sqlalchemy.orm import Session
+from sqlalchemy import create_engine, func
+
+import datetime as dt
+
 from flask import Flask, jsonify
 
+#################################################
+# Database Setup
+#################################################
+engine = create_engine("sqlite:///../Resources/hawaii.sqlite")
 
+# reflect an existing database into a new model
+Base = automap_base()
+# reflect the tables
+Base.prepare(engine, reflect=True)
+
+# Save reference to the table
+measurement = Base.classes.measurement
+station = Base.classes.station
+
+#################################################
+# Flask Setup
+#################################################
 app = Flask(__name__)
+
+
+#################################################
+# Flask Routes
+#################################################
 
 
 
@@ -10,81 +42,97 @@ def homepage():
     """List all available api routes."""
     return (
         f"Available Routes:<br/>"
-        f"/api/v1.0/precipitation<br/>"
-        f"/api/v1.0/stations<br/>"
-        f"/api/v1.0/tobs<br/>"
-        f"/api/v1.0/<start>/<end>
+        f"<a href='http://127.0.0.1:5000/api/v1.0/precipitation'> /api/v1.0/precipitation</a><br/>"
+        f"<a href='http://127.0.0.1:5000/api/v1.0/stations'>/api/v1.0/stations<br/>"
+        f"<a href='http://127.0.0.1:5000/api/v1.0/tobs'>/api/v1.0/tobs<br/>"
+        f"<a href='http://127.0.0.1:5000/api/v1.0/2016-07-29'>/api/v1.0/&lt;start date &gt;</a> use date format:YYYY-MM-DD <br>"
+        f"<a href='http://127.0.0.1:5000/api/v1.0/2016-07-29/2017-07-29'>/api/v1.0/&lt;start date &gt;/&lt;end date&gt;</a>use date format:YYYY-MM-DD"
     )
+
 
 
 @app.route("/api/v1.0/precipitation")
 def precipitation():
 
-
-    # Create our session (link) from Python to the DB
+#     # Create our session (link) from Python to the DB
     session = Session(engine)
 
-    """Return a list of all passenger names"""
-    # Query all passengers
-    results = session.query(Passenger.name).all()
+    # Query all precipitations
+    results = session.query(measurement.date,measurement.prcp).all()
 
     session.close()
-# important because someone will come and run the code again, if too many servers running,
-# eventually flask is going to not like that and die
 
-# we have RESULTS now going to convert into a list
     # Convert list of tuples into normal list
-    all_names = list(np.ravel(results))
-# and then jsonify list
-    return jsonify(all_names)
-# where the jsonify thing comes in ^^^
-# thats done
+    all_date_prcp = []
+    for date,precip in results:
+        date_dict = {}
+        date_dict[date] = precip
+        all_date_prcp.append(date_dict)
+
+    return jsonify(all_date_prcp)
 
 
 
 # now for individual passenger
 @app.route("/api/v1.0/stations")
-def passengers():
+def stations():
     # Create our session (link) from Python to the DB
     session = Session(engine)
 
-    """Return a list of passenger data including the name, age, and sex of each passenger"""
-    # doing the same query, name, age, sex
-    # Query all passengers
-    results = session.query(Passenger.name, Passenger.age, Passenger.sex).all()
-
+  
+    results = session.query(station.station).all()
+    print(results)
     session.close()
 
 # creating a dicctionary from those results ^^
     # Create a dictionary from the row data and append to a list of all_passengers
-    all_passengers = []
-    for name, age, sex in results:
+    all_stations = []
+    for stations in results:
         #create this dictionary
-        passenger_dict = {}
+        allstations_dict = {}
         # create keys and give them a value
-        passenger_dict["name"] = name
-        passenger_dict["age"] = age
-        passenger_dict["sex"] = sex
-        all_passengers.append(passenger_dict)
+        allstations_dict["stations"] = stations[0]
+        
+        all_stations.append(allstations_dict)
 # then out put it and this will create a json object
-    return jsonify(all_passengers)
+    return jsonify(all_stations)
 
 
 
+# @app.route("/api/v1.0/tobs")
+#query for the dates and temperature observations from a year from the last data point.
 @app.route("/api/v1.0/tobs")
-def precipitation():
-
+def tobs():
     # Create our session (link) from Python to the DB
     session = Session(engine)
 
+    """Return a list of tobs (temperature observations) for the last year of data in the table"""
+    query_date = dt.date(2017, 8, 23) - dt.timedelta(days=365)
+
+    results = session.query(measurement.tobs).\
+        filter(measurement.date >= query_date).all()
+        
+    session.close()
+
+    # Convert list of tuples into normal list
+    all_tobs = list(np.ravel(results))
+
+    return jsonify(all_tobs)
 
 
+# Create function to validate input as specific date format YYYY-MM-DD
+def validate(date_text):
+    try:
+        dt.datetime.strptime(date_text, '%Y-%m-%d')
+    except ValueError:
+        raise ValueError("Incorrect data format, should be YYYY-MM-DD")
 
-@app.route("/api/v1.0/<start>/<end>")
-def precipitation():
 
-    # Create our session (link) from Python to the DB
-    session = Session(engine)
+# @app.route("/api/v1.0/<start>/<end>")
+# def precipitation():
+
+#     # Create our session (link) from Python to the DB
+#     session = Session(engine)
 
 
 
