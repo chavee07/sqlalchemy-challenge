@@ -122,69 +122,58 @@ def tobs():
 #     # return jsonify(results)
 
 
-# Create function to validate input as specific date format YYYY-MM-DD
-def validate(date_text):
-    try:
-        dt.datetime.strptime(date_text, '%Y-%m-%d')
-    except ValueError:
-        raise ValueError("Incorrect data format, should be YYYY-MM-DD")
+# # Create function to validate input as specific date format YYYY-MM-DD
+# def validate(date_text):
+#     try:
+#         dt.datetime.strptime(date_text, '%Y-%m-%d')
+#     except ValueError:
+#         raise ValueError("Incorrect data format, should be YYYY-MM-DD")
 
+# startDate=session.query(func.max(measurement.date)).first()
 
 
 # When given the start only, calculate TMIN, TAVG, and TMAX for all dates greater than and equal to the start date.
 @app.route("/api/v1.0/<startDate>")
-def temp_date_end(startDate):
+@app.route("/api/v1.0/<startDate>/<endDate>")
+def temp_date_end(startDate=None,endDate=None):
+
     """Fetch the TMIN, TAVG and TMAX given a  start/end date
        variables supplied by the user, or a 404 if not."""
     
-    if isinstance(startDate,str):
-        print(f"One date passed - Determine agg funcs over date range")
-        validate(startDate)
+    if not endDate:
+        # print(f"One date passed - Determine agg funcs over date range")
+        # validate(startDate)
         # Create our session (link) from Python to the DB
         session = Session(engine)
 
         results = session.query(func.min(measurement.tobs),\
                                 func.avg(measurement.tobs),\
                                 func.max(measurement.tobs)).\
-                                filter(measurement.date >= startDate).first()
+                                filter(measurement.date >= startDate).all()
         
-        session.close()
 
         # Convert list of tuples into normal list
         temp_agg = list(np.ravel(results))
 
         return jsonify(temp_agg)
-    return jsonify({"error": "Dates not found."}), 404
 
 
+    session = Session(engine)
 
-# When given the start and end dates separated by a "/", calculate TMIN, TAVG, and TMAX for all dates greater than and equal to the start date.
-@app.route("/api/v1.0/<startDate>/<endDate>")
-def temp_date_range(startDate,endDate):
-    """Fetch the TMIN, TAVG and TMAX given a  start/end date
-       variables supplied by the user, or a 404 if not."""
-    
-    if isinstance(endDate,str):
-        print(f"Both Dates passed - Determine agg funcs over date range")
-        validate(startDate)
-        validate(endDate)
-        # Create our session (link) from Python to the DB
-        session = Session(engine)
-
-        results = session.query(func.min(measurement.tobs),\
+    results = session.query(func.min(measurement.tobs),\
                                 func.avg(measurement.tobs),\
                                 func.max(measurement.tobs)).\
                                 filter(measurement.date >= startDate).\
-                                filter(measurement.date <= endDate).first()
+                                    filter(measurement.date<=endDate).all()
         
-        session.close()
-
         # Convert list of tuples into normal list
-        temps_agg = list(np.ravel(results))
+    temp_agg = list(np.ravel(results))
 
-        return jsonify(temps_agg)
-    return jsonify({"error": "Dates not found."}), 404
+    return jsonify(temp_agg)
 
+
+        # return jsonify(temp_agg)
+    # return jsonify({"error": "Dates not found."}), 404
 
 
 
